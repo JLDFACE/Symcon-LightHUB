@@ -10,7 +10,9 @@ class ArtNetPlayerController extends IPSModule
     {
         parent::Create();
 
-        $this->RegisterPropertyString('Host', '');
+        // Default 127.0.0.1: Player laeuft als PLCnext-App auf demselben Geraet
+        // (Catan C1) im Host-Netzwerk -> lokal immer erreichbar.
+        $this->RegisterPropertyString('Host', '127.0.0.1');
         $this->RegisterPropertyInteger('Port', 8000);
         $this->RegisterPropertyInteger('Poll', 3);
 
@@ -208,7 +210,7 @@ class ArtNetPlayerController extends IPSModule
         echo count($msg) ? ('Player: ' . implode(', ', $msg) . '.') : 'Alle Player sind bereits als verbundene Instanz vorhanden.';
     }
 
-    // ----- HTTP-Helfer (REST gegen das NAS-Tool) -----
+    // ----- HTTP-Helfer (REST gegen den Art-Net Player) -----
     private function Http($method, $path, $body, &$ok)
     {
         $ok = true;

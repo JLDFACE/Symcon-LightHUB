@@ -3,7 +3,7 @@
     {
       "type": "ValidationTextBox",
       "name": "Host",
-      "caption": "Host/IP (NAS-Tool)"
+      "caption": "Host/IP (Art-Net Player; lokal auf dem Catan: 127.0.0.1)"
     },
     {
       "type": "NumberSpinner",
