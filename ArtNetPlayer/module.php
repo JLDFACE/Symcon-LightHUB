@@ -107,9 +107,23 @@ class ArtNetPlayer extends IPSModule
     public function Stop()    { $this->SendToParent('stop', array('player' => (int)$this->ReadPropertyInteger('PlayerID'))); }
     public function SetMasterValue(int $v)
     {
-        $v = max(0, min(100, (int)$v));
-        if ($v > 0) $this->EnsureOnForDim();
+        $this->ApplyMaster((int)$v);
+    }
+
+    // Helligkeit setzen - EIN Weg fuer WebFront, Modulfunktion, KNX-Abs-Dim und KNX-Rel-Dim.
+    // WICHTIG: den Master-Wert VOR dem Einschalten an den Player schicken. Andersherum
+    // blendet das On-Programm noch mit dem alten (oft viel hoeheren) Master ein und rampt
+    // erst danach herunter - das war das sichtbare Aufblitzen beim Einschalten.
+    private function ApplyMaster(int $v)
+    {
+        $v = max(0, min(100, $v));
+        $this->SetValueSafe('Master', $v);
+        if ($v <= 0) {
+            $this->OffForDim();
+            return;
+        }
         $this->SendToParent('master', array('player' => (int)$this->ReadPropertyInteger('PlayerID'), 'value' => $v));
+        $this->EnsureOnForDim();
     }
 
     // Helligkeitsaenderung schaltet ein: wenn aus ODER Szene = Aus-Programm laeuft
@@ -131,6 +145,13 @@ class ArtNetPlayer extends IPSModule
         } else {
             $this->SendToParent('on', array('player' => $pid));
         }
+    }
+
+    // Gegenstueck zu EnsureOnForDim: 0 % Helligkeit = ausschalten (wie KNX-Dimmer).
+    private function OffForDim()
+    {
+        $this->SetValueSafe('Power', false);
+        $this->_switch(false);
     }
 
     // Normaler Ein/Aus.
@@ -183,10 +204,7 @@ class ArtNetPlayer extends IPSModule
             $this->SetValueSafe('Power', $on);
             $this->_switch($on);   // Ein = OnProgram, Aus = Aus-Szene (dann echtes Aus)
         } elseif ($Ident == 'Master') {
-            $v = max(0, min(100, (int)$Value));
-            if ($v > 0) $this->EnsureOnForDim();
-            $this->SetValueSafe('Master', $v);
-            $this->SendToParent('master', array('player' => $pid, 'value' => $v));
+            $this->ApplyMaster((int)$Value);
         } elseif ($Ident == 'Program') {
             $idx = (int)$Value;
             $names = json_decode($this->GetBuffer('Programs'), true);
@@ -211,10 +229,7 @@ class ArtNetPlayer extends IPSModule
             $this->_switch((bool)GetValue($SenderID));
 
         } elseif ($SenderID == (int)$this->ReadPropertyInteger('KnxAbsDimVarID')) {
-            $v = max(0, min(100, (int)GetValue($SenderID)));
-            if ($v > 0) $this->EnsureOnForDim();
-            $this->SetValueSafe('Master', $v);
-            $this->SendToParent('master', array('player' => $pid, 'value' => $v));
+            $this->ApplyMaster((int)GetValue($SenderID));
 
         } elseif ($SenderID == (int)$this->ReadPropertyInteger('KnxRelDimVarID')) {
             $raw = (int)GetValue($SenderID);      // KNX 4-bit DPT 3.007
@@ -250,9 +265,7 @@ class ArtNetPlayer extends IPSModule
         $cur = (int)$this->GetValue('Master');
         $new = max(0, min(100, $cur + ($up ? $step : -$step)));
         if ($new != $cur) {
-            if ($new > 0) $this->EnsureOnForDim();
-            $this->SetValueSafe('Master', $new);
-            $this->SendToParent('master', array('player' => $pid, 'value' => $new));
+            $this->ApplyMaster($new);
         }
         if ($new <= 0 || $new >= 100) $this->SetTimerInterval('KnxDim', 0);
     }
@@ -272,7 +285,8 @@ class ArtNetPlayer extends IPSModule
 
         $on = ($me['state'] != 'stop');
         $this->SetValueSafe('Power', $on);
-        $this->SetValueSafe('Master', (int)$me['master']);
+        // Aus -> Master 0 anzeigen (Geraet merkt sich die Helligkeit fuers naechste Ein)
+        $this->SetValueSafe('Master', $on ? (int)$me['master'] : 0);
         $this->SetValueSafe('Loop', !empty($me['loop']));
         $dur = isset($me['duration_ms']) ? (int)$me['duration_ms'] : 0;
         $pos = isset($me['position_ms']) ? (int)$me['position_ms'] : 0;
