@@ -13,6 +13,16 @@
       "maximum": 65535
     },
     {
+      "type": "ValidationTextBox",
+      "name": "Username",
+      "caption": "Benutzer (LightHUB-Konto, Rolle User; leer = ohne Anmeldung)"
+    },
+    {
+      "type": "PasswordTextBox",
+      "name": "Password",
+      "caption": "Passwort"
+    },
+    {
       "type": "NumberSpinner",
       "name": "Poll",
       "caption": "Abfrage-Intervall (s)",
@@ -34,6 +44,7 @@
   "status": [
     { "code": 102, "icon": "active", "caption": "Verbunden" },
     { "code": 104, "icon": "inactive", "caption": "Host/Port nicht konfiguriert" },
-    { "code": 201, "icon": "error", "caption": "Tool nicht erreichbar" }
+    { "code": 201, "icon": "error", "caption": "Tool nicht erreichbar" },
+    { "code": 202, "icon": "error", "caption": "Anmeldung abgelehnt - Benutzer/Passwort pruefen" }
   ]
 }

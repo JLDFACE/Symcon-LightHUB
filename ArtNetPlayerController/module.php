@@ -15,6 +15,11 @@ class ArtNetPlayerController extends IPSModule
         $this->RegisterPropertyString('Host', '127.0.0.1');
         $this->RegisterPropertyInteger('Port', 8000);
         $this->RegisterPropertyInteger('Poll', 3);
+        // LightHUB verlangt eine Anmeldung (HTTP Basic Auth). Am besten ein eigenes
+        // LightHUB-Konto mit Rolle "User" anlegen (z.B. "symcon"). Leer = ohne Anmeldung
+        // (alter Art-Net DMX Player 1.x).
+        $this->RegisterPropertyString('Username', '');
+        $this->RegisterPropertyString('Password', '');
 
         $this->RegisterTimer('Poll', 0, 'ANP_Poll($_IPS[\'TARGET\']);');
     }
@@ -96,6 +101,10 @@ class ArtNetPlayerController extends IPSModule
     {
         $ok = true;
         $body = $this->Http('GET', '/status', null, $ok);
+        if ($this->lastCode == 401 || $this->lastCode == 403 || $this->lastCode == 429) {
+            $this->SetStatus(202);          // Anmeldung abgelehnt / gesperrt - nicht "nicht erreichbar"
+            return;
+        }
         if (!$ok || $body === '') {
             $this->SetStatus(201);
             return;
@@ -210,10 +219,13 @@ class ArtNetPlayerController extends IPSModule
         echo count($msg) ? ('Player: ' . implode(', ', $msg) . '.') : 'Alle Player sind bereits als verbundene Instanz vorhanden.';
     }
 
-    // ----- HTTP-Helfer (REST gegen den Art-Net Player) -----
+    // ----- HTTP-Helfer (REST gegen LightHUB bzw. den Art-Net Player) -----
+    private $lastCode = 0;       // HTTP-Status der letzten Anfrage (0 = keine Antwort)
+
     private function Http($method, $path, $body, &$ok)
     {
         $ok = true;
+        $this->lastCode = 0;
         $host = trim($this->ReadPropertyString('Host'));
         $port = (int)$this->ReadPropertyInteger('Port');
         if ($host === '' || $port <= 0 || $port > 65535) {
@@ -223,6 +235,10 @@ class ArtNetPlayerController extends IPSModule
         $url = 'http://' . $host . ':' . $port . $path;
 
         $headers = array('Connection: close');
+        $user = trim($this->ReadPropertyString('Username'));
+        if ($user !== '') {
+            $headers[] = 'Authorization: Basic ' . base64_encode($user . ':' . $this->ReadPropertyString('Password'));
+        }
         $opts = array('http' => array(
             'method'        => $method,
             'timeout'       => 4,
@@ -237,10 +253,30 @@ class ArtNetPlayerController extends IPSModule
         $opts['http']['header'] = implode("\r\n", $headers) . "\r\n";
 
         $ctx = stream_context_create($opts);
-        $data = @file_get_contents($url, false, $ctx);
+        // fopen + stream_get_meta_data statt file_get_contents: liefert die Antwort-
+        // Header in jeder PHP-Version (ohne das in 8.4 veraltete $http_response_header)
+        $fp = @fopen($url, 'r', false, $ctx);
+        if ($fp === false) {
+            $ok = false;
+            return '';
+        }
+        $meta = stream_get_meta_data($fp);
+        $data = stream_get_contents($fp);
+        fclose($fp);
         if ($data === false) {
             $ok = false;
             return '';
+        }
+        // Statuscode auswerten (ignore_errors liefert auch 4xx/5xx-Antworten)
+        $resp = isset($meta['wrapper_data']) ? $meta['wrapper_data'] : array();
+        if (isset($resp[0]) && preg_match('#HTTP/\S+\s+(\d{3})#', $resp[0], $m)) {
+            $this->lastCode = (int)$m[1];
+        }
+        if ($this->lastCode >= 400) {
+            $ok = false;
+            if ($this->lastCode == 401) {
+                $this->SendDebug('HTTP', 'Anmeldung abgelehnt - Benutzer/Passwort in der Controller-Instanz pruefen', 0);
+            }
         }
         return (string)$data;
     }

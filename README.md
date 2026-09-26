@@ -95,6 +95,11 @@ Datenschnittstelle `{AE7C1A00-0003-47AE-B000-0000000000E3}`.
 
 1. Modul in der Symcon-Module-Verwaltung per GitHub-URL hinzufügen.
 2. Instanz **ArtNet Player Controller** anlegen → Host = Synology-IP, Port = 8000, Poll z. B. 3 s.
+   **Ab LightHUB (Nachfolger des Tools):** Benutzer und Passwort eines LightHUB-Kontos
+   eintragen – am besten eigenes Konto `symcon` mit Rolle *User* (in LightHUB unter
+   *Benutzer* anlegen). Leer lassen für den alten Art-Net DMX Player 1.x ohne Anmeldung;
+   eingetragene Zugangsdaten stören den alten Player nicht (er ignoriert sie). So kann das
+   Modul **vor** dem Umstieg aktualisiert werden – kein Ausfall beim Wechsel.
 3. Im Controller **„Fehlende Player-Instanzen anlegen"** → legt je Tool-Player eine verbundene Instanz an.
 4. In jeder Player-Instanz **Player-ID**, **On-/Off-Programm** und optional KNX setzen.
 
@@ -217,6 +222,7 @@ Basis `http://192.168.10.244:8000`. Admin-Endpunkte: Header `X-Admin-Password` (
 
 | Symptom | Lösung |
 |---|---|
+| Controller: „Anmeldung abgelehnt" | Benutzer/Passwort des LightHUB-Kontos prüfen; nach 10 Fehlversuchen ist die IP 15 min gesperrt |
 | „Datenfluss inkompatibel" | Controller-Verbindung prüfen; Instanzen über den Controller-Button anlegen |
 | Licht geht nicht aus | Off-Programm sollte schwarz enden; sonst greift der Blackout-Tail; „einfach aus" = `ANPP_TurnOff` |
 | Bewegung schaltet doppelt | Melder ist gleichzeitig an „Schalten" *und* in einem Ereignis — einen entfernen |
