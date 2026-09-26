@@ -76,6 +76,19 @@ class ArtNetPlayerController extends IPSModule
             return json_encode(array('ok' => $ok, 'programs' => $names));
         }
 
+        // Start/Stopp-Dimmen: LightHUB dimmt selbst. Antwort mit HTTP-Code (404 = alter
+        // Art-Net DMX Player ohne /dim -> das Kind dimmt dann schrittweise) und Player-Status.
+        if ($cmd == 'dim') {
+            $ok = true;
+            $body = $this->Http('POST', "/player/$pid/dim", array(
+                'direction' => (string)$a['direction'],
+                'speed'     => isset($a['speed']) ? (float)$a['speed'] : 20.0), $ok);
+            $st = json_decode($body, true);
+            if ($ok && (string)$a['direction'] === 'stop') $this->Poll();
+            return json_encode(array('ok' => $ok, 'code' => $this->lastCode,
+                                     'status' => is_array($st) ? $st : null));
+        }
+
         $ok = true;
         switch ($cmd) {
             case 'on':     $this->Http('POST', "/player/$pid/on", null, $ok); break;

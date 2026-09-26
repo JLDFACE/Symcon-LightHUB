@@ -21,7 +21,8 @@ class ArtNetPlayer extends IPSModule
         $this->RegisterPropertyInteger('KnxSwitchVarID', 0);
         $this->RegisterPropertyInteger('KnxAbsDimVarID', 0);
         $this->RegisterPropertyInteger('KnxRelDimVarID', 0);
-        $this->RegisterPropertyInteger('KnxStepPercent', 8);
+        $this->RegisterPropertyInteger('KnxDimSeconds', 5);     // Rel. Dimmen: Zeit fuer 0 -> 100 %
+        $this->RegisterPropertyInteger('KnxStepPercent', 8);    // nur alter Player ohne Start/Stopp-Dimmen
         $this->RegisterPropertyInteger('KnxStatusLevelVarID', 0);
         $this->RegisterPropertyInteger('KnxStatusSwitchVarID', 0);
         // Gruppen-Dimmer <-> KNX: [{group:id, dim:varid, status:varid}]
@@ -29,6 +30,8 @@ class ArtNetPlayer extends IPSModule
 
         $this->SetBuffer('Programs', json_encode(array()));
         $this->SetBuffer('RelDir', '1');
+        $this->SetBuffer('HubDim', '');
+        $this->SetBuffer('RestoreMaster', '');  // Helligkeit vor dem Herunterdimmen auf 0 % (fuers naechste Ein)
 
         $this->EnsureProfiles();
 
@@ -51,6 +54,8 @@ class ArtNetPlayer extends IPSModule
         parent::ApplyChanges();
         $this->EnsureProfiles();
         $this->SetTimerInterval('KnxDim', 0);
+        $this->SetBuffer('HubDim', '');
+        $this->SetBuffer('NoHubDim', '');       // nach Aenderungen (z.B. Umstieg) neu pruefen
         $pid = (int)$this->ReadPropertyInteger('PlayerID');
 
         // Fade-Zeiten ins Tool schreiben
@@ -118,6 +123,7 @@ class ArtNetPlayer extends IPSModule
     {
         $v = max(0, min(100, $v));
         $this->SetValueSafe('Master', $v);
+        if ($v > 0) $this->SetBuffer('RestoreMaster', '');
         if ($v <= 0) {
             $this->OffForDim();
             return;
@@ -131,13 +137,7 @@ class ArtNetPlayer extends IPSModule
     private function EnsureOnForDim()
     {
         $pid = (int)$this->ReadPropertyInteger('PlayerID');
-        $isOff = !(bool)$this->GetValue('Power');
-        if (!$isOff) {
-            // Power meldet "an" – laeuft aber gerade das Aus-Programm? Dann auch als aus behandeln.
-            $offProg = (string)$this->ReadPropertyString('OffProgram');
-            if ($offProg !== '' && $this->CurrentProgram() === $offProg) $isOff = true;
-        }
-        if (!$isOff) return;
+        if (!$this->IsOffForDim()) return;
         $this->SetValueSafe('Power', true);
         $onProg = (string)$this->ReadPropertyString('OnProgram');
         if ($onProg !== '') {
@@ -145,6 +145,14 @@ class ArtNetPlayer extends IPSModule
         } else {
             $this->SendToParent('on', array('player' => $pid));
         }
+    }
+
+    // Aus im Sinne des Dimmens: Power aus ODER das Aus-Programm laeuft gerade.
+    private function IsOffForDim()
+    {
+        if (!(bool)$this->GetValue('Power')) return true;
+        $offProg = (string)$this->ReadPropertyString('OffProgram');
+        return $offProg !== '' && $this->CurrentProgram() === $offProg;
     }
 
     // Gegenstueck zu EnsureOnForDim: 0 % Helligkeit = ausschalten (wie KNX-Dimmer).
@@ -163,6 +171,13 @@ class ArtNetPlayer extends IPSModule
     {
         $pid = (int)$this->ReadPropertyInteger('PlayerID');
         if ($on) {
+            // Zuletzt per Rel. Dimmen auf 0 % gegangen? LightHUB steht dann auf Master 0 ->
+            // vorher die alte Helligkeit zurueck, sonst bliebe das Ein dunkel.
+            $restore = (int)$this->GetBuffer('RestoreMaster');
+            if ($restore > 0) {
+                $this->SetBuffer('RestoreMaster', '');
+                $this->SendToParent('master', array('player' => $pid, 'value' => $restore));
+            }
             $onProg = (string)$this->ReadPropertyString('OnProgram');
             if ($onProg !== '') {
                 $this->SendToParent('play', array('player' => $pid, 'program' => $onProg));
@@ -236,11 +251,9 @@ class ArtNetPlayer extends IPSModule
             $stepCode = $raw & 0x07;              // 0 = Stopp, 1..7 = dimmen
             $up = ($raw & 0x08) != 0;             // Bit3: 1 = heller, 0 = dunkler
             if ($stepCode == 0) {
-                $this->SetTimerInterval('KnxDim', 0);
+                $this->StopDim();
             } else {
-                $this->SetBuffer('RelDir', $up ? '1' : '0');
-                $this->KnxDimStep();
-                $this->SetTimerInterval('KnxDim', 700);
+                $this->StartDim($up);
             }
             return;
         }
@@ -254,6 +267,58 @@ class ArtNetPlayer extends IPSModule
                 $this->SendToParent('group', array('player' => $pid, 'id' => $gid, 'value' => $v));
                 return;
             }
+        }
+    }
+
+    // Relativ dimmen wie ein KNX-Dimmer: StartDim(true/false) beim Druecken, StopDim() beim Loslassen.
+    // LightHUB dimmt dann selbst mit jedem Bild (stufenlos); der alte Art-Net DMX Player
+    // kennt das nicht -> Rueckfall auf Schritte (KnxStepPercent alle 700 ms).
+    public function StartDim(bool $up)
+    {
+        $pid = (int)$this->ReadPropertyInteger('PlayerID');
+        $this->SetTimerInterval('KnxDim', 0);
+        $this->SetBuffer('RelDir', $up ? '1' : '0');
+        $off = $this->IsOffForDim();
+        if ($off && !$up) return;                      // aus + dunkler: bleibt aus (wie KNX-Dimmer)
+
+        if ($this->GetBuffer('NoHubDim') !== '1') {
+            if ($off) {                                // aus + heller: von 0 % hochdimmen
+                $this->SetBuffer('RestoreMaster', '');
+                $this->SendToParent('master', array('player' => $pid, 'value' => 0));
+                $this->SetValueSafe('Master', 0);
+                $this->EnsureOnForDim();
+            } elseif (!$up) {                          // fuer "auf 0 % gedimmt, spaeter wieder Ein"
+                $cur = (int)$this->GetValue('Master');
+                $this->SetBuffer('RestoreMaster', (string)($cur >= 5 ? $cur : 100));
+            }
+            $speed = 100.0 / max(1, (int)$this->ReadPropertyInteger('KnxDimSeconds'));
+            $r = json_decode((string)$this->SendToParent('dim', array(
+                'player' => $pid, 'direction' => $up ? 'up' : 'down', 'speed' => $speed)), true);
+            if (!empty($r['ok'])) {
+                $this->SetBuffer('HubDim', '1');
+                return;
+            }
+            if ((int)($r['code'] ?? 0) !== 404) return;   // LightHUB nicht erreichbar o.ae.
+            $this->SetBuffer('NoHubDim', '1');         // alter Player: ab jetzt Schritte
+            $this->SendDebug('Dimmen', 'Player kennt kein Start/Stopp-Dimmen - dimme in Schritten', 0);
+        }
+        $this->KnxDimStep();
+        $this->SetTimerInterval('KnxDim', 700);
+    }
+
+    public function StopDim()
+    {
+        $this->SetTimerInterval('KnxDim', 0);
+        if ($this->GetBuffer('HubDim') !== '1') return;
+        $this->SetBuffer('HubDim', '');
+        $r = json_decode((string)$this->SendToParent('dim', array(
+            'player' => (int)$this->ReadPropertyInteger('PlayerID'), 'direction' => 'stop')), true);
+        $m = isset($r['status']['master']) ? (int)$r['status']['master'] : -1;
+        if ($m >= 0) $this->SetValueSafe('Master', $m);
+        if ($m === 0) {
+            $this->OffForDim();                        // auf 0 % gedimmt = aus (wie ApplyMaster)
+        } else {
+            $this->SetBuffer('RestoreMaster', '');
         }
     }
 

@@ -58,7 +58,7 @@ Das Modul ruft diese LightHUB-Funktionen auf:
 |---|---|---|
 | `GET /status`, `GET /player/{id}/programs` | Zustand, Programmliste | User |
 | `POST /player/{id}/play`, `play_off`, `on`, `off`, `stop`, `pause` | Szenen, Ein/Aus | User |
-| `POST /player/{id}/master`, `/group` | Helligkeit, Gruppen-Dimmer | User |
+| `POST /player/{id}/master`, `/group`, `/dim` | Helligkeit, Gruppen-Dimmer, Rel. Dimmen | User |
 | `POST /player/{id}/config` | Fade-Zeiten der Instanz übertragen, Loop schalten | **Admin** |
 
 Das Konto für Symcon daher mit Rolle **Admin** anlegen. Mit einem *User*-Konto funktioniert alles
@@ -86,10 +86,18 @@ außer dem Übertragen der Fade-Zeiten und dem Loop-Schalter.
 |---|---|---|---|
 | Schalten | ein | 1.001 | Ein/Aus über On-/Off-Programm |
 | Abs. Dimmen | ein | 5.001 | Master 0–100 % |
-| Rel. Dimmen | ein | 3.007 | Heller/dunkler (4-bit, mit Schrittgröße) |
+| Rel. Dimmen | ein | 3.007 | Heller/dunkler (4-bit): Start beim Drücken, Stopp beim Loslassen |
 | Status Dimmwert | aus | 5.001 | aktueller Master (0 wenn aus) |
 | Status Ein/Aus | aus | 1.001 | läuft ein Programm? |
 | Gruppen-KNX | ein/aus | 5.001 | je Gruppe optional Abs-Dimmen + Status (Liste im Formular) |
+
+**Relatives Dimmen** läuft in LightHUB selbst: Symcon schickt nur *Start* (heller/dunkler) und
+*Stopp*, LightHUB dimmt dazwischen stufenlos mit jedem Bild – unabhängig von Netz und Symcon-Last.
+Die Dimmgeschwindigkeit stellt *Rel. Dimmen: Zeit 0 → 100 %* ein (Standard 5 s). Verhalten wie ein
+KNX-Dimmer: aus + heller dimmt von 0 % hoch, aus + dunkler bleibt aus, auf 0 % gedimmt schaltet aus;
+das nächste Ein kommt mit der Helligkeit von vor dem Herunterdimmen. Am alten Art-Net DMX Player 1.x
+dimmt das Modul automatisch wie bisher in Schritten (*Schritt %* alle 0,7 s).
+Die Helligkeitskurve (linear, quadratisch, DALI) wird je Player in LightHUB eingestellt.
 
 > Steuerst du einen Melder über ein **Symcon-Ereignis** (Sonderlogik), verknüpfe ihn **nicht** zusätzlich
 > mit „Schalten" der Instanz — sonst doppelte Reaktion.
@@ -106,6 +114,8 @@ außer dem Übertragen der Fade-Zeiten und dem Loop-Schalter.
 | `ANPP_PlayProgram($id, "Name")` | Programm/Szene starten |
 | `ANPP_PlayProgramOff($id, "Name")` | Programm als Aus-Szene: einmal durch, dann echtes Aus |
 | `ANPP_SetMasterValue($id, 0..100)` | Helligkeit (schaltet bei >0 ein) |
+| `ANPP_StartDim($id, true/false)` | heller/dunkler dimmen, bis `ANPP_StopDim` (z. B. für Taster am iPad) |
+| `ANPP_StopDim($id)` | Dimmen anhalten (bei 0 % aus) |
 | `ANPP_Stop($id)` | Wiedergabe anhalten |
 | `ANPP_Refresh($id)` | Status sofort neu holen |
 | `ANP_SyncPlayers($ctrlId)` | fehlende Player-Instanzen anlegen |
@@ -154,6 +164,7 @@ ANPP_SetMasterValue($player, (int)GetValue($istTag ? $vTagHell : $vNachtHell));
 
 | Build | Änderung |
 |---|---|
+| 104 | Rel. Dimmen als Start/Stopp in LightHUB (stufenlos, Zeit einstellbar), `ANPP_StartDim`/`ANPP_StopDim`; Schritte nur noch am alten Player |
 | 103 | Umbenennung in LightHUB (Anzeige); GUIDs/Präfixe unverändert |
 | 102 | Anmeldung an LightHUB (Benutzer/Passwort im Controller), Status „Anmeldung abgelehnt“ |
 | 101 | Art-Net DMX Player 1.x: Controller, Player, KNX, Gruppen-Dimmer, Aus-Szenen |
