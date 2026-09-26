@@ -1,4 +1,9 @@
-# FACE Art-Net DMX Player
+# LightHUB – IP-Symcon-Modul
+
+> **Umbenannt (09/2026):** vormals „Art-Net DMX Player“ (Repo `Symcon-ArtNetPlayer`). Das Tool
+> heißt jetzt **LightHUB** ([facegmbh/LightHUB](https://github.com/facegmbh/LightHUB)).
+> **GUIDs, Klassennamen und die Funktions-Präfixe `ANP_`/`ANPP_` sind unverändert** – bestehende
+> Instanzen, Skripte und Ereignisse laufen nach dem Update ohne Anpassung weiter.
 
 Aufnahme & autarke Wiedergabe von Art-Net-/DMX-Lichtstimmungen (aus Madrix o.ä.),
 gesteuert aus IP-Symcon, per KNX oder direkt in der Weboberfläche.
@@ -84,8 +89,8 @@ Zwei Bausteine:
 
 | Modul | Präfix | Rolle |
 |---|---|---|
-| ArtNet Player **Controller** | `ANP` | Verbindung zum Tool (Host/Port), Status-Polling, Player-Discovery |
-| ArtNet **Player** | `ANPP` | je Tool-Player eine Geräte-Instanz mit Variablen, KNX, Funktionen |
+| LightHUB **Controller** | `ANP` | Verbindung zum Tool (Host/Port), Status-Polling, Player-Discovery |
+| LightHUB **Player** | `ANPP` | je Tool-Player eine Geräte-Instanz mit Variablen, KNX, Funktionen |
 
 GUIDs: Controller `{AE7C1A00-0001-47AE-B000-0000000000C1}` ·
 Player `{AE7C1A00-0002-47AE-B000-0000000000D2}` ·
@@ -94,7 +99,7 @@ Datenschnittstelle `{AE7C1A00-0003-47AE-B000-0000000000E3}`.
 ### Einrichtung
 
 1. Modul in der Symcon-Module-Verwaltung per GitHub-URL hinzufügen.
-2. Instanz **ArtNet Player Controller** anlegen → Host = Synology-IP, Port = 8000, Poll z. B. 3 s.
+2. Instanz **LightHUB Controller** anlegen → Host = Synology-IP, Port = 8000, Poll z. B. 3 s.
    **Ab LightHUB (Nachfolger des Tools):** Benutzer und Passwort eines LightHUB-Kontos
    eintragen – am besten eigenes Konto `symcon` mit Rolle *User* (in LightHUB unter
    *Benutzer* anlegen). Leer lassen für den alten Art-Net DMX Player 1.x ohne Anmeldung;

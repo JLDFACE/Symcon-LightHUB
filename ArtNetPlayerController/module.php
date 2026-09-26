@@ -219,7 +219,7 @@ class ArtNetPlayerController extends IPSModule
         echo count($msg) ? ('Player: ' . implode(', ', $msg) . '.') : 'Alle Player sind bereits als verbundene Instanz vorhanden.';
     }
 
-    // ----- HTTP-Helfer (REST gegen LightHUB bzw. den Art-Net Player) -----
+    // ----- HTTP-Helfer (REST gegen LightHUB bzw. den alten Art-Net DMX Player 1.x) -----
     private $lastCode = 0;       // HTTP-Status der letzten Anfrage (0 = keine Antwort)
 
     private function Http($method, $path, $body, &$ok)

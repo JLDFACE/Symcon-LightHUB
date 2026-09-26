@@ -1,13 +1,13 @@
 {
   "id": "{AE7C1A00-0000-47AE-B000-0000000000A0}",
   "author": "FACE GmbH",
-  "name": "Art-Net DMX Player",
-  "url": "https://github.com/JLDFACE/Symcon-ArtNetPlayer",
+  "name": "LightHUB",
+  "url": "https://github.com/JLDFACE/Symcon-LightHUB",
   "compatibility": {
     "version": "6.0"
   },
   "version": "1.0",
-  "build": 102,
+  "build": 103,
   "date": 20260926,
   "modules": [
     {
@@ -15,7 +15,7 @@
       "name": "ArtNetPlayerController",
       "type": 1,
       "vendor": "FACE",
-      "aliases": ["Art-Net Player Controller"],
+      "aliases": ["LightHUB Controller", "Art-Net Player Controller"],
       "parentRequirements": [],
       "childRequirements": ["{AE7C1A00-0003-47AE-B000-0000000000E3}"],
       "implemented": ["{AE7C1A00-0003-47AE-B000-0000000000E3}"]
@@ -25,7 +25,7 @@
       "name": "ArtNetPlayer",
       "type": 3,
       "vendor": "FACE",
-      "aliases": ["Art-Net Player"],
+      "aliases": ["LightHUB Player", "Art-Net Player"],
       "parentRequirements": ["{AE7C1A00-0003-47AE-B000-0000000000E3}"],
       "childRequirements": [],
       "implemented": ["{AE7C1A00-0003-47AE-B000-0000000000E3}"]

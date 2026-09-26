@@ -3,7 +3,7 @@
     {
       "type": "ValidationTextBox",
       "name": "Host",
-      "caption": "Host/IP (Art-Net Player; lokal auf dem Catan: 127.0.0.1)"
+      "caption": "Host/IP (LightHUB; lokal auf dem Catan: 127.0.0.1)"
     },
     {
       "type": "NumberSpinner",
@@ -38,7 +38,7 @@
     },
     {
       "type": "Label",
-      "caption": "Danach je Player eine 'Art-Net Player'-Instanz anlegen und dort die Player-ID setzen."
+      "caption": "Danach je Player eine 'LightHUB Player'-Instanz anlegen und dort die Player-ID setzen."
     }
   ],
   "status": [

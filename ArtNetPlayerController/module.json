@@ -4,6 +4,7 @@
   "type": 1,
   "vendor": "FACE",
   "aliases": [
+    "LightHUB Controller",
     "Art-Net Player Controller"
   ],
   "parentRequirements": [],

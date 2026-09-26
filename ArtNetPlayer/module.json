@@ -4,6 +4,7 @@
   "type": 3,
   "vendor": "FACE",
   "aliases": [
+    "LightHUB Player",
     "Art-Net Player"
   ],
   "parentRequirements": [
