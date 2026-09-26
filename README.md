@@ -41,8 +41,8 @@ LightHUB läuft autark weiter, auch wenn Symcon neu startet; Aufnahmen und Einst
 
 ## Einrichtung
 
-1. **Konto in LightHUB anlegen** (Web-Oberfläche → *Benutzer*), z. B. `symcon`. Rolle siehe
-   [Rechte](#rechte-in-lighthub).
+1. **Konto in LightHUB anlegen** (Web-Oberfläche → *Benutzer*), z. B. `symcon`, mit Rolle
+   **Admin** – siehe [Rechte](#rechte-in-lighthub).
 2. Instanz **LightHUB Controller** anlegen: Host (IP von LightHUB; läuft LightHUB auf demselben
    Catan: `127.0.0.1`), Port (Standard 8000), **Benutzer/Passwort**, Abfrage-Intervall (z. B. 3 s).
    Für den alten Art-Net DMX Player 1.x Benutzer leer lassen – eingetragene Zugangsdaten stören
@@ -61,7 +61,8 @@ Das Modul ruft diese LightHUB-Funktionen auf:
 | `POST /player/{id}/master`, `/group` | Helligkeit, Gruppen-Dimmer | User |
 | `POST /player/{id}/config` | Fade-Zeiten der Instanz übertragen, Loop schalten | **Admin** |
 
-Mit einem *User*-Konto funktioniert alles außer dem Übertragen der Fade-Zeiten und dem Loop-Schalter.
+Das Konto für Symcon daher mit Rolle **Admin** anlegen. Mit einem *User*-Konto funktioniert alles
+außer dem Übertragen der Fade-Zeiten und dem Loop-Schalter.
 
 ## Variablen der Player-Instanz
 
