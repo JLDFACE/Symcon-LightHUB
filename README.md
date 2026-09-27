@@ -80,6 +80,7 @@ die Cue-Auswahl zeigt mit *User* „Cue 1“, „Cue 2“ … statt der Namen.
 |---|---|---|---|
 | Ein/Aus | `Power` | Bool | schaltet über On-/Off-Programm |
 | Master | `Master` | 0–100 % | Gesamthelligkeit |
+| Speed | `Speed` | 10–400 % | Tempo von Aufnahme und Cue-Liste des Players (100 = Original; Fades bleiben) |
 | Programm | `Program` | Auswahl | Szene direkt wählen |
 | Position | `Position` | 0–100 % | Wiedergabe-Fortschritt (Anzeige) |
 | Loop | `Loop` | Bool | Loop des aktuellen Programms |
@@ -149,6 +150,7 @@ groß) stehen im Debug der Instanz.
 | `ANPP_PlayProgram($id, "Name")` | Programm/Szene starten |
 | `ANPP_PlayProgramOff($id, "Name")` | Programm als Aus-Szene: einmal durch, dann echtes Aus |
 | `ANPP_SetMasterValue($id, 0..100)` | Helligkeit (schaltet bei >0 ein) |
+| `ANPP_SetSpeed($id, 10..400)` | Speed-Master in % (100 = Originaltempo), ohne Sprung |
 | `ANPP_StartDim($id, true/false)` | heller/dunkler dimmen, bis `ANPP_StopDim` (z. B. für Taster am iPad) |
 | `ANPP_StopDim($id)` | Dimmen anhalten (bei 0 % aus) |
 | `ANPP_Stop($id)` | Wiedergabe anhalten |
@@ -212,6 +214,7 @@ ANPP_SetMasterValue($player, (int)GetValue($istTag ? $vTagHell : $vNachtHell));
 
 | Build | Änderung |
 |---|---|
+| 107 | Variable *Speed* (Speed-Master je Player, 10–400 %), `ANPP_SetSpeed` – braucht LightHUB mit Speed-Master |
 | 106 | Hinweise auf die LightHUB-Rolle *Automation* (Rechteverwaltung); Bereiche je Konto werden beachtet |
 | 105 | Neues Modul *LightHUB Cue-Liste* für freie Cue-Listen (Go/Zurück/Release/Stopp, Cue-Auswahl, Master, KNX); Cue-Listen-Discovery im Controller |
 | 104 | Rel. Dimmen als Start/Stopp in LightHUB (stufenlos, Zeit einstellbar), `ANPP_StartDim`/`ANPP_StopDim`; Schritte nur noch am alten Player |

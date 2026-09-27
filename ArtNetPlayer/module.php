@@ -39,6 +39,8 @@ class ArtNetPlayer extends IPSModule
         $this->EnableAction('Power');
         $this->RegisterVariableInteger('Master', 'Master', 'ANP.Percent', 20);
         $this->EnableAction('Master');
+        $this->RegisterVariableInteger('Speed', 'Speed', 'ANP.Speed', 25);   // Speed-Master 10-400 % (LightHUB)
+        $this->EnableAction('Speed');
         $this->RegisterVariableInteger('Program', 'Programm', $this->ProgProfile(), 30);
         $this->EnableAction('Program');
         $this->RegisterVariableFloat('Position', 'Position', 'ANP.PercentF', 40);
@@ -113,6 +115,13 @@ class ArtNetPlayer extends IPSModule
     public function SetMasterValue(int $v)
     {
         $this->ApplyMaster((int)$v);
+    }
+    // Speed-Master: Aufnahme und Cue-Liste des Players schneller/langsamer (10-400 %, 100 = Originaltempo)
+    public function SetSpeed(int $percent)
+    {
+        $v = max(10, min(400, $percent));
+        $this->SetValueSafe('Speed', $v);
+        $this->SendToParent('speed', array('player' => (int)$this->ReadPropertyInteger('PlayerID'), 'value' => $v));
     }
 
     // Helligkeit setzen - EIN Weg fuer WebFront, Modulfunktion, KNX-Abs-Dim und KNX-Rel-Dim.
@@ -220,6 +229,8 @@ class ArtNetPlayer extends IPSModule
             $this->_switch($on);   // Ein = OnProgram, Aus = Aus-Szene (dann echtes Aus)
         } elseif ($Ident == 'Master') {
             $this->ApplyMaster((int)$Value);
+        } elseif ($Ident == 'Speed') {
+            $this->SetSpeed((int)$Value);
         } elseif ($Ident == 'Program') {
             $idx = (int)$Value;
             $names = json_decode($this->GetBuffer('Programs'), true);
@@ -353,6 +364,7 @@ class ArtNetPlayer extends IPSModule
         // Aus -> Master 0 anzeigen (Geraet merkt sich die Helligkeit fuers naechste Ein)
         $this->SetValueSafe('Master', $on ? (int)$me['master'] : 0);
         $this->SetValueSafe('Loop', !empty($me['loop']));
+        if (isset($me['speed'])) $this->SetValueSafe('Speed', (int)round($me['speed']));
         $dur = isset($me['duration_ms']) ? (int)$me['duration_ms'] : 0;
         $pos = isset($me['position_ms']) ? (int)$me['position_ms'] : 0;
         $this->SetValueSafe('Position', $dur > 0 ? round(100.0 * $pos / $dur, 1) : 0.0);
@@ -482,6 +494,12 @@ class ArtNetPlayer extends IPSModule
         }
         IPS_SetVariableProfileValues('ANP.PercentF', 0, 100, 0);
         IPS_SetVariableProfileText('ANP.PercentF', '', ' %');
+        if (!IPS_VariableProfileExists('ANP.Speed')) {
+            IPS_CreateVariableProfile('ANP.Speed', 1);
+            IPS_SetVariableProfileIcon('ANP.Speed', 'Speedo');
+        }
+        IPS_SetVariableProfileValues('ANP.Speed', 10, 400, 5);
+        IPS_SetVariableProfileText('ANP.Speed', '', ' %');
         $p = $this->ProgProfile();
         if (!IPS_VariableProfileExists($p)) IPS_CreateVariableProfile($p, 1);
     }
