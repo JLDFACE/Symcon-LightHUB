@@ -116,6 +116,25 @@ class ArtNetPlayer extends IPSModule
     {
         $this->ApplyMaster((int)$v);
     }
+    // Player-Farben (Platzhalter wie MADRIX Global Colors): Farbe n als 0xRRGGBB bzw. "#rrggbb"
+    public function SetColor(int $n, int $rgb)
+    {
+        $this->SetValueSafe('Color' . $n, $rgb & 0xFFFFFF);
+        $this->SendToParent('color', array('player' => (int)$this->ReadPropertyInteger('PlayerID'), 'n' => $n,
+            'hex' => sprintf('#%06x', $rgb & 0xFFFFFF)));
+    }
+    public function SetColorHex(int $n, string $hex)
+    {
+        $this->SetColor($n, (int)hexdec(ltrim(trim($hex), '#')));
+    }
+    // Umfaerben der Aufnahme: 0 = aus, 1 = 3 Platzhalter (Rot/Gruen/Blau -> Farbe 1/2/3), 2 = einfaerben (Farbe 1)
+    public function SetRecolor(int $mode)
+    {
+        $modes = array('off', 'rgb3', 'tint');
+        $m = max(0, min(2, $mode));
+        $this->SetValueSafe('Recolor', $m);
+        $this->SendToParent('looks', array('player' => (int)$this->ReadPropertyInteger('PlayerID'), 'looks' => array('recolor' => $modes[$m])));
+    }
     // Speed-Master: Aufnahme und Cue-Liste des Players schneller/langsamer (10-400 %, 100 = Originaltempo)
     public function SetSpeed(int $percent)
     {
@@ -216,6 +235,14 @@ class ArtNetPlayer extends IPSModule
     public function RequestAction($Ident, $Value)
     {
         $pid = (int)$this->ReadPropertyInteger('PlayerID');
+        if (strpos($Ident, 'Color') === 0) {         // Player-Farbe (Color{n}, ~HexColor)
+            $this->SetColor((int)substr($Ident, 5), (int)$Value);
+            return;
+        }
+        if ($Ident == 'Recolor') {
+            $this->SetRecolor((int)$Value);
+            return;
+        }
         if (strpos($Ident, 'Grp') === 0) {           // Gruppen-Dimmer (Grp{id})
             $gid = (int)substr($Ident, 3);
             $v = max(0, min(100, (int)$Value));
@@ -365,6 +392,7 @@ class ArtNetPlayer extends IPSModule
         $this->SetValueSafe('Master', $on ? (int)$me['master'] : 0);
         $this->SetValueSafe('Loop', !empty($me['loop']));
         if (isset($me['speed'])) $this->SetValueSafe('Speed', (int)round($me['speed']));
+        if (isset($me['colors']) && is_array($me['colors'])) $this->SyncColorVars($me['colors'], isset($me['recolor']) ? (string)$me['recolor'] : 'off');
         $dur = isset($me['duration_ms']) ? (int)$me['duration_ms'] : 0;
         $pos = isset($me['position_ms']) ? (int)$me['position_ms'] : 0;
         $this->SetValueSafe('Position', $dur > 0 ? round(100.0 * $pos / $dur, 1) : 0.0);
@@ -456,6 +484,25 @@ class ArtNetPlayer extends IPSModule
         return (isset($d['groups']) && is_array($d['groups'])) ? $d['groups'] : array();
     }
 
+    // Je Player-Farbe eine Variable (Color{n}, ~HexColor) + Umfaerben; ueberzaehlige entfernen.
+    private function SyncColorVars($colors, $recolor)
+    {
+        $n = count($colors);
+        foreach ($colors as $i => $hex) {
+            $ident = 'Color' . ($i + 1);
+            $this->MaintainVariable($ident, 'Farbe ' . ($i + 1), 1 /*Integer*/, '~HexColor', 51 + $i, true);
+            $this->EnableAction($ident);
+            $this->SetValueSafe($ident, (int)hexdec(ltrim((string)$hex, '#')));
+        }
+        for ($i = $n + 1; $i <= 8; $i++) {
+            if (@$this->GetIDForIdent('Color' . $i)) $this->UnregisterVariable('Color' . $i);
+        }
+        $this->MaintainVariable('Recolor', 'Umfärben', 1, 'ANP.Recolor', 59, true);
+        $this->EnableAction('Recolor');
+        $map = array('off' => 0, 'rgb3' => 1, 'tint' => 2);
+        $this->SetValueSafe('Recolor', isset($map[$recolor]) ? $map[$recolor] : 0);
+    }
+
     // Je Gruppe eine Dimmer-Variable (Grp{id}) anlegen/aktualisieren; verwaiste entfernen.
     private function SyncGroupVars($groups)
     {
@@ -494,6 +541,13 @@ class ArtNetPlayer extends IPSModule
         }
         IPS_SetVariableProfileValues('ANP.PercentF', 0, 100, 0);
         IPS_SetVariableProfileText('ANP.PercentF', '', ' %');
+        if (!IPS_VariableProfileExists('ANP.Recolor')) {
+            IPS_CreateVariableProfile('ANP.Recolor', 1);
+            IPS_SetVariableProfileIcon('ANP.Recolor', 'Paintbrush');
+            IPS_SetVariableProfileAssociation('ANP.Recolor', 0, 'aus', '', -1);
+            IPS_SetVariableProfileAssociation('ANP.Recolor', 1, '3 Platzhalter', '', -1);
+            IPS_SetVariableProfileAssociation('ANP.Recolor', 2, 'Einfärben', '', -1);
+        }
         if (!IPS_VariableProfileExists('ANP.Speed')) {
             IPS_CreateVariableProfile('ANP.Speed', 1);
             IPS_SetVariableProfileIcon('ANP.Speed', 'Speedo');

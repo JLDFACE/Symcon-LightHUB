@@ -81,6 +81,8 @@ die Cue-Auswahl zeigt mit *User* „Cue 1“, „Cue 2“ … statt der Namen.
 | Ein/Aus | `Power` | Bool | schaltet über On-/Off-Programm |
 | Master | `Master` | 0–100 % | Gesamthelligkeit |
 | Speed | `Speed` | 10–400 % | Tempo von Aufnahme und Cue-Liste des Players (100 = Original; Fades bleiben) |
+| Farbe 1 … n | `Color{n}` | Farbe (`~HexColor`) | Player-Farben – Platzhalter wie *Global Colors* in MADRIX: Cues/Effekte mit „Farbe n“ und umgefärbte Aufnahmen wechseln weich (auto angelegt, Anzahl in LightHUB) |
+| Umfärben | `Recolor` | aus / 3 Platzhalter / Einfärben | Aufnahme umfärben: *3 Platzhalter* = in MADRIX mit Global Color 1/2/3 = Rot/Grün/Blau aufnehmen; *Einfärben* = Farbton aus Farbe 1 |
 | Programm | `Program` | Auswahl | Szene direkt wählen |
 | Position | `Position` | 0–100 % | Wiedergabe-Fortschritt (Anzeige) |
 | Loop | `Loop` | Bool | Loop des aktuellen Programms |
@@ -151,6 +153,8 @@ groß) stehen im Debug der Instanz.
 | `ANPP_PlayProgramOff($id, "Name")` | Programm als Aus-Szene: einmal durch, dann echtes Aus |
 | `ANPP_SetMasterValue($id, 0..100)` | Helligkeit (schaltet bei >0 ein) |
 | `ANPP_SetSpeed($id, 10..400)` | Speed-Master in % (100 = Originaltempo), ohne Sprung |
+| `ANPP_SetColor($id, n, 0xFF8800)` · `ANPP_SetColorHex($id, n, "#ff8800")` | Player-Farbe n setzen |
+| `ANPP_SetRecolor($id, 0..2)` | Umfärben: 0 aus, 1 drei Platzhalter, 2 einfärben |
 | `ANPP_StartDim($id, true/false)` | heller/dunkler dimmen, bis `ANPP_StopDim` (z. B. für Taster am iPad) |
 | `ANPP_StopDim($id)` | Dimmen anhalten (bei 0 % aus) |
 | `ANPP_Stop($id)` | Wiedergabe anhalten |
@@ -214,6 +218,7 @@ ANPP_SetMasterValue($player, (int)GetValue($istTag ? $vTagHell : $vNachtHell));
 
 | Build | Änderung |
 |---|---|
+| 108 | Player-Farben *Farbe 1 … n* (`~HexColor`) und *Umfärben*, `ANPP_SetColor`/`SetColorHex`/`SetRecolor` – braucht LightHUB mit Player-Farben |
 | 107 | Variable *Speed* (Speed-Master je Player, 10–400 %), `ANPP_SetSpeed` – braucht LightHUB mit Speed-Master |
 | 106 | Hinweise auf die LightHUB-Rolle *Automation* (Rechteverwaltung); Bereiche je Konto werden beachtet |
 | 105 | Neues Modul *LightHUB Cue-Liste* für freie Cue-Listen (Go/Zurück/Release/Stopp, Cue-Auswahl, Master, KNX); Cue-Listen-Discovery im Controller |
