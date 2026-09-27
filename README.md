@@ -26,6 +26,7 @@ Madrix / Art-Net-Quelle ──Aufnahme──▶ LightHUB ──Art-Net / RS485�
                                         ▲
                                         │ REST (HTTP, Basic Auth)
 IP-Symcon: LightHUB Controller ──┬── LightHUB Player (je Player eine Instanz)
+                                 ├── LightHUB Cue-Liste (je freie Cue-Liste eine Instanz)
                                  └── …          ▲ KNX · WebFront · Skripte · Melder
 ```
 
@@ -33,9 +34,11 @@ IP-Symcon: LightHUB Controller ──┬── LightHUB Player (je Player eine I
 |---|---|---|
 | LightHUB **Controller** | `ANP` | Verbindung zu LightHUB (Host, Port, Anmeldung), Status-Abfrage, Player-Discovery |
 | LightHUB **Player** | `ANPP` | je LightHUB-Player eine Geräte-Instanz mit Variablen, KNX, Funktionen |
+| LightHUB **Cue-Liste** | `LHC` | je freie Cue-Liste eine Instanz: Go, Zurück, Release, Stopp, Cue-Auswahl, Master, KNX |
 
 GUIDs: Controller `{AE7C1A00-0001-47AE-B000-0000000000C1}` · Player
-`{AE7C1A00-0002-47AE-B000-0000000000D2}` · Datenschnittstelle `{AE7C1A00-0003-47AE-B000-0000000000E3}`.
+`{AE7C1A00-0002-47AE-B000-0000000000D2}` · Cue-Liste `{AE7C1A00-0004-47AE-B000-0000000000F4}` ·
+Datenschnittstelle `{AE7C1A00-0003-47AE-B000-0000000000E3}`.
 
 LightHUB läuft autark weiter, auch wenn Symcon neu startet; Aufnahmen und Einstellungen liegen in LightHUB.
 
@@ -49,6 +52,7 @@ LightHUB läuft autark weiter, auch wenn Symcon neu startet; Aufnahmen und Einst
    ihn aber nicht, das Modul kann also **vor** einem Umstieg aktualisiert werden.
 3. Im Controller **„Fehlende Player-Instanzen anlegen“** – je LightHUB-Player eine verbundene Instanz.
 4. In jeder Player-Instanz **Player-ID**, **On-/Off-Programm**, Fade-Zeiten und optional KNX setzen.
+5. Für Cue-Listen im Controller **„Fehlende Cue-Listen-Instanzen anlegen“** – siehe [Cue-Listen](#cue-listen).
 
 ## Rechte in LightHUB
 
@@ -60,9 +64,12 @@ Das Modul ruft diese LightHUB-Funktionen auf:
 | `POST /player/{id}/play`, `play_off`, `on`, `off`, `stop`, `pause` | Szenen, Ein/Aus | User |
 | `POST /player/{id}/master`, `/group`, `/dim` | Helligkeit, Gruppen-Dimmer, Rel. Dimmen | User |
 | `POST /player/{id}/config` | Fade-Zeiten der Instanz übertragen, Loop schalten | **Admin** |
+| `POST /playbacks/{id}/go`, `back`, `release`, `stop`, `master` | Cue-Listen bedienen | User |
+| `GET /cuelists` | Cue-Namen für die Auswahl in der Cue-Listen-Instanz | **Admin** |
 
 Das Konto für Symcon daher mit Rolle **Admin** anlegen. Mit einem *User*-Konto funktioniert alles
-außer dem Übertragen der Fade-Zeiten und dem Loop-Schalter.
+außer dem Übertragen der Fade-Zeiten und dem Loop-Schalter; die Cue-Auswahl zeigt dann „Cue 1“,
+„Cue 2“ … statt der Namen.
 
 ## Variablen der Player-Instanz
 
@@ -102,6 +109,31 @@ Die Helligkeitskurve (linear, quadratisch, DALI) wird je Player in LightHUB eing
 > Steuerst du einen Melder über ein **Symcon-Ereignis** (Sonderlogik), verknüpfe ihn **nicht** zusätzlich
 > mit „Schalten" der Instanz — sonst doppelte Reaktion.
 
+## Cue-Listen
+
+Cue-Listen legst du in LightHUB unter *Cues* an. Eine Cue-Liste, die einem **Player zugeordnet**
+ist, erscheint in dessen Programmauswahl und wird über die Player-Instanz bedient. **Freie
+Cue-Listen** (keinem Player zugeordnet) bekommen eine eigene Instanz *LightHUB Cue-Liste*: im
+Controller zeigt die Liste *Cue-Listen im Tool* alle Cue-Listen, der Button legt die fehlenden
+freien an (Name aus LightHUB, Cue-Listen-ID gesetzt).
+
+| Variable | Ident | Typ | Funktion |
+|---|---|---|---|
+| Steuerung | `Action` | Knöpfe | Go · Zurück · Release · Stopp |
+| Läuft | `Running` | Bool | Ein = Go (wenn sie nicht schon läuft), Aus = Release |
+| Cue | `Cue` | Auswahl | aktueller Cue; Auswahl springt direkt dorthin (0 = keiner) |
+| Aktueller Cue | `CueName` | Text | Name des laufenden Cues |
+| Nächster Cue | `NextName` | Text | was das nächste Go bringt |
+| Master | `Master` | 0–100 % | Helligkeit der Cue-Liste |
+
+*Release* blendet mit der Release-Zeit der Cue-Liste aus, *Stopp* schaltet sofort aus. Am Ende einer
+Liste ohne Loop bleibt Go auf dem letzten Cue stehen. Fehler (z. B. Liste ohne Cues, Cue-Nummer zu
+groß) stehen im Debug der Instanz.
+
+**KNX je Cue-Liste:** *Go* und *Zurück* (Bool, nur die 1 zählt – passt zu Tastern), *Schalten*
+(Ein = Go, Aus = Release), *Master* (0–100 %) sowie die Status *läuft* (DPT 1.001), *Master %*
+(DPT 5.001) und *Cue-Nummer* (Integer, 0 = keiner).
+
 ## Funktionsreferenz
 
 `$id` = Instanz-ID der Player-Instanz.
@@ -119,7 +151,20 @@ Die Helligkeitskurve (linear, quadratisch, DALI) wird je Player in LightHUB eing
 | `ANPP_Stop($id)` | Wiedergabe anhalten |
 | `ANPP_Refresh($id)` | Status sofort neu holen |
 | `ANP_SyncPlayers($ctrlId)` | fehlende Player-Instanzen anlegen |
+| `ANP_SyncCuelists($ctrlId)` | fehlende Instanzen für freie Cue-Listen anlegen |
 | `ANP_GetStatus($ctrlId)` | komplettes `/status` als JSON-String |
+
+Cue-Listen (`$id` = Instanz-ID der Cue-Listen-Instanz):
+
+| Funktion | Wirkung |
+|---|---|
+| `LHC_Go($id)` | nächster Cue |
+| `LHC_GoCue($id, 3)` | Cue 3 direkt anfahren |
+| `LHC_Back($id)` | vorheriger Cue |
+| `LHC_Release($id)` | ausblenden (Release-Zeit der Cue-Liste) |
+| `LHC_Stop($id)` | sofort aus |
+| `LHC_SetMasterValue($id, 0..100)` | Helligkeit der Cue-Liste |
+| `LHC_Refresh($id)` | Status sofort neu holen |
 
 ## Automations-Rezepte
 
@@ -164,6 +209,7 @@ ANPP_SetMasterValue($player, (int)GetValue($istTag ? $vTagHell : $vNachtHell));
 
 | Build | Änderung |
 |---|---|
+| 105 | Neues Modul *LightHUB Cue-Liste* für freie Cue-Listen (Go/Zurück/Release/Stopp, Cue-Auswahl, Master, KNX); Cue-Listen-Discovery im Controller |
 | 104 | Rel. Dimmen als Start/Stopp in LightHUB (stufenlos, Zeit einstellbar), `ANPP_StartDim`/`ANPP_StopDim`; Schritte nur noch am alten Player |
 | 103 | Umbenennung in LightHUB (Anzeige); GUIDs/Präfixe unverändert |
 | 102 | Anmeldung an LightHUB (Benutzer/Passwort im Controller), Status „Anmeldung abgelehnt“ |

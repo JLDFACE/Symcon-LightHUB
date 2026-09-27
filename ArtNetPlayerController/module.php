@@ -5,6 +5,7 @@ class ArtNetPlayerController extends IPSModule
     // Datenschnittstelle Parent <-> Child
     private $DataID = '{AE7C1A00-0003-47AE-B000-0000000000E3}';
     private $PlayerModuleID = '{AE7C1A00-0002-47AE-B000-0000000000D2}';
+    private $CuelistModuleID = '{AE7C1A00-0004-47AE-B000-0000000000F4}';
 
     public function Create()
     {
@@ -89,6 +90,46 @@ class ArtNetPlayerController extends IPSModule
                                      'status' => is_array($st) ? $st : null));
         }
 
+        // Cue-Liste bedienen (Kind LightHUB Cue-Liste): go[cue] | back | release | stop | master[value]
+        if ($cmd == 'cue') {
+            $lid = isset($a['list']) ? (int)$a['list'] : 0;
+            $act = isset($a['action']) ? (string)$a['action'] : '';
+            if (!in_array($act, array('go', 'back', 'release', 'stop', 'master'), true)) {
+                return json_encode(array('ok' => false, 'error' => 'unbekannte Aktion'));
+            }
+            $body = null;
+            if ($act == 'go' && isset($a['cue'])) $body = array('cue' => (int)$a['cue']);
+            if ($act == 'master') $body = array('value' => isset($a['value']) ? (float)$a['value'] : 100.0);
+            $ok = true;
+            $resp = $this->Http('POST', "/playbacks/$lid/$act", $body, $ok);
+            $code = $this->lastCode;
+            $err = '';
+            if (!$ok) {
+                $j = json_decode($resp, true);
+                $err = (is_array($j) && isset($j['detail']) && is_string($j['detail'])) ? $j['detail']
+                     : ($code > 0 ? 'HTTP ' . $code : 'LightHUB nicht erreichbar');
+            }
+            if ($ok) $this->Poll();
+            return json_encode(array('ok' => $ok, 'code' => $code, 'error' => $err));
+        }
+
+        // Cue-Namen einer Cue-Liste (GET /cuelists braucht in LightHUB die Rolle Admin)
+        if ($cmd == 'get_cuelist') {
+            $lid = isset($a['list']) ? (int)$a['list'] : 0;
+            $ok = true;
+            $body = $this->Http('GET', '/cuelists', null, $ok);
+            $j = json_decode($body, true);
+            if ($ok && isset($j['cuelists']) && is_array($j['cuelists'])) {
+                foreach ($j['cuelists'] as $cl) {
+                    if ((int)$cl['id'] != $lid) continue;
+                    $names = array();
+                    foreach ($cl['cues'] as $c) $names[] = isset($c['name']) ? (string)$c['name'] : '';
+                    return json_encode(array('ok' => true, 'name' => (string)$cl['name'], 'cues' => $names));
+                }
+            }
+            return json_encode(array('ok' => false, 'code' => $this->lastCode));
+        }
+
         $ok = true;
         switch ($cmd) {
             case 'on':     $this->Http('POST', "/player/$pid/on", null, $ok); break;
@@ -144,13 +185,15 @@ class ArtNetPlayerController extends IPSModule
     {
         $form = json_decode(file_get_contents(__DIR__ . '/form.json'), true);
 
-        // Player vom Tool holen
+        // Player und Cue-Listen vom Tool holen
         $ok = true;
         $players = array();
+        $playbacks = array();
         $body = $this->Http('GET', '/status', null, $ok);
         if ($ok) {
             $st = json_decode($body, true);
             if (isset($st['engine']['players'])) $players = $st['engine']['players'];
+            if (isset($st['playbacks']) && is_array($st['playbacks'])) $playbacks = $st['playbacks'];
         }
 
         // vorhandene Player-Instanzen dieses Controllers nach PlayerID
@@ -185,7 +228,68 @@ class ArtNetPlayerController extends IPSModule
             'type' => 'Button', 'caption' => 'Fehlende Player-Instanzen anlegen',
             'onClick' => 'ANP_SyncPlayers($id);'
         );
+
+        // Cue-Listen: freie bekommen eine eigene Instanz, die an einem Player stehen dort im Programm
+        $haveCl = $this->CuelistInstances();
+        $values = array();
+        foreach ($playbacks as $pb) {
+            $lid = (int)$pb['id'];
+            if (isset($haveCl[$lid]))    $state = '✓ Instanz vorhanden';
+            elseif (!empty($pb['player'])) $state = 'über Player ' . (int)$pb['player'];
+            else                         $state = '– fehlt';
+            $values[] = array('name' => (string)$pb['name'], 'lid' => $lid, 'cues' => (int)$pb['cues'], 'state' => $state);
+        }
+        $form['actions'][] = array(
+            'type' => 'List', 'name' => 'CuelistList', 'caption' => 'Cue-Listen im Tool',
+            'rowCount' => max(2, min(14, count($values))),
+            'columns' => array(
+                array('caption' => 'Cue-Liste', 'name' => 'name', 'width' => 'auto'),
+                array('caption' => 'ID', 'name' => 'lid', 'width' => '70px'),
+                array('caption' => 'Cues', 'name' => 'cues', 'width' => '70px'),
+                array('caption' => 'Symcon', 'name' => 'state', 'width' => '160px')
+            ),
+            'values' => $values
+        );
+        $form['actions'][] = array(
+            'type' => 'Button', 'caption' => 'Fehlende Cue-Listen-Instanzen anlegen (freie Cue-Listen)',
+            'onClick' => 'ANP_SyncCuelists($id);'
+        );
         return json_encode($form);
+    }
+
+    // Vorhandene Cue-Listen-Instanzen dieses Controllers nach Cue-Listen-ID
+    private function CuelistInstances()
+    {
+        $have = array();
+        foreach (IPS_GetInstanceListByModuleID($this->CuelistModuleID) as $iid) {
+            if (IPS_GetInstance($iid)['ConnectionID'] == $this->InstanceID) {
+                $have[(int)IPS_GetProperty($iid, 'CuelistID')] = $iid;
+            }
+        }
+        return $have;
+    }
+
+    // Legt fuer jede freie Cue-Liste (keinem Player zugeordnet) eine verbundene Instanz an
+    public function SyncCuelists()
+    {
+        $ok = true;
+        $body = $this->Http('GET', '/status', null, $ok);
+        if (!$ok) { echo 'Tool nicht erreichbar – Host/Port pruefen.'; return; }
+        $st = json_decode($body, true);
+        if (!isset($st['playbacks'])) { echo 'Diese LightHUB-Version kennt keine Cue-Listen.'; return; }
+        $have = $this->CuelistInstances();
+        $created = 0;
+        foreach ($st['playbacks'] as $pb) {
+            $lid = (int)$pb['id'];
+            if (!empty($pb['player']) || isset($have[$lid])) continue;
+            $iid = IPS_CreateInstance($this->CuelistModuleID);
+            IPS_SetName($iid, (string)$pb['name']);
+            @IPS_ConnectInstance($iid, $this->InstanceID);
+            IPS_SetProperty($iid, 'CuelistID', $lid);
+            IPS_ApplyChanges($iid);
+            $created++;
+        }
+        echo $created > 0 ? ('Cue-Listen: ' . $created . ' angelegt.') : 'Alle freien Cue-Listen sind bereits als Instanz vorhanden.';
     }
 
     // Legt fuer jeden Player im Tool eine verbundene Instanz an (falls fehlend)

@@ -1,0 +1,26 @@
+{
+  "elements": [
+    {
+      "type": "NumberSpinner",
+      "name": "CuelistID",
+      "caption": "Cue-Listen-ID (in LightHUB unter Cues)",
+      "minimum": 1,
+      "maximum": 9999
+    },
+    { "type": "Label", "bold": true, "caption": "KNX-Verknüpfung (Symcon-Variablen mit Gruppenadresse)" },
+    { "type": "SelectVariable", "name": "KnxGoVarID",           "caption": "Go (Bool: 1 = nächster Cue)" },
+    { "type": "SelectVariable", "name": "KnxBackVarID",         "caption": "Zurück (Bool: 1 = vorheriger Cue)" },
+    { "type": "SelectVariable", "name": "KnxSwitchVarID",       "caption": "Schalten (Bool: Ein = Go, Aus = Release)" },
+    { "type": "SelectVariable", "name": "KnxAbsDimVarID",       "caption": "Master (Integer 0..100 %)" },
+    { "type": "SelectVariable", "name": "KnxStatusSwitchVarID", "caption": "Status läuft (raus, DPT 1.001)" },
+    { "type": "SelectVariable", "name": "KnxStatusLevelVarID",  "caption": "Status Master % (raus, DPT 5.001)" },
+    { "type": "SelectVariable", "name": "KnxStatusCueVarID",    "caption": "Status Cue-Nummer (raus, Integer, 0 = keiner)" }
+  ],
+  "actions": [
+    { "type": "Button", "caption": "Werte jetzt aktualisieren", "onClick": "LHC_Refresh($id);" }
+  ],
+  "status": [
+    { "code": 102, "icon": "active", "caption": "OK" },
+    { "code": 104, "icon": "inactive", "caption": "Kein Controller / Cue-Liste unbekannt" }
+  ]
+}

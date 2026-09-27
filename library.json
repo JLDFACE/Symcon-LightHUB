@@ -7,8 +7,8 @@
     "version": "6.0"
   },
   "version": "1.0",
-  "build": 104,
-  "date": 20260926,
+  "build": 105,
+  "date": 20260927,
   "modules": [
     {
       "id": "{AE7C1A00-0001-47AE-B000-0000000000C1}",
@@ -26,6 +26,16 @@
       "type": 3,
       "vendor": "FACE",
       "aliases": ["LightHUB Player", "Art-Net Player"],
+      "parentRequirements": ["{AE7C1A00-0003-47AE-B000-0000000000E3}"],
+      "childRequirements": [],
+      "implemented": ["{AE7C1A00-0003-47AE-B000-0000000000E3}"]
+    },
+    {
+      "id": "{AE7C1A00-0004-47AE-B000-0000000000F4}",
+      "name": "LightHUBCueList",
+      "type": 3,
+      "vendor": "FACE",
+      "aliases": ["LightHUB Cue-Liste"],
       "parentRequirements": ["{AE7C1A00-0003-47AE-B000-0000000000E3}"],
       "childRequirements": [],
       "implemented": ["{AE7C1A00-0003-47AE-B000-0000000000E3}"]

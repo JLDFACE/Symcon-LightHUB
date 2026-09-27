@@ -1,0 +1,17 @@
+{
+  "id": "{AE7C1A00-0004-47AE-B000-0000000000F4}",
+  "name": "LightHUBCueList",
+  "type": 3,
+  "vendor": "FACE",
+  "aliases": [
+    "LightHUB Cue-Liste"
+  ],
+  "parentRequirements": [
+    "{AE7C1A00-0003-47AE-B000-0000000000E3}"
+  ],
+  "childRequirements": [],
+  "implemented": [
+    "{AE7C1A00-0003-47AE-B000-0000000000E3}"
+  ],
+  "prefix": "LHC"
+}
