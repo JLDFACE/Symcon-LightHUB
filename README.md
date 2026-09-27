@@ -45,7 +45,7 @@ LightHUB läuft autark weiter, auch wenn Symcon neu startet; Aufnahmen und Einst
 ## Einrichtung
 
 1. **Konto in LightHUB anlegen** (Web-Oberfläche → *Benutzer*), z. B. `symcon`, mit Rolle
-   **Admin** – siehe [Rechte](#rechte-in-lighthub).
+   **Automation** – siehe [Rechte](#rechte-in-lighthub).
 2. Instanz **LightHUB Controller** anlegen: Host (IP von LightHUB; läuft LightHUB auf demselben
    Catan: `127.0.0.1`), Port (Standard 8000), **Benutzer/Passwort**, Abfrage-Intervall (z. B. 3 s).
    Für den alten Art-Net DMX Player 1.x Benutzer leer lassen – eingetragene Zugangsdaten stören
@@ -58,18 +58,21 @@ LightHUB läuft autark weiter, auch wenn Symcon neu startet; Aufnahmen und Einst
 
 Das Modul ruft diese LightHUB-Funktionen auf:
 
-| Aufruf | Wofür | Rolle in LightHUB |
+| Aufruf | Wofür | Recht in LightHUB |
 |---|---|---|
-| `GET /status`, `GET /player/{id}/programs` | Zustand, Programmliste | User |
-| `POST /player/{id}/play`, `play_off`, `on`, `off`, `stop`, `pause` | Szenen, Ein/Aus | User |
-| `POST /player/{id}/master`, `/group`, `/dim` | Helligkeit, Gruppen-Dimmer, Rel. Dimmen | User |
-| `POST /player/{id}/config` | Fade-Zeiten der Instanz übertragen, Loop schalten | **Admin** |
-| `POST /playbacks/{id}/go`, `back`, `release`, `stop`, `master` | Cue-Listen bedienen | User |
-| `GET /cuelists` | Cue-Namen für die Auswahl in der Cue-Listen-Instanz | User |
+| `GET /status`, `GET /player/{id}/programs`, `GET /cuelists` | Zustand, Programmliste, Cue-Namen | Ansehen (jedes Konto) |
+| `POST /player/{id}/play`, `play_off`, `on`, `off`, `stop`, `pause` | Szenen, Ein/Aus | Bedienen |
+| `POST /player/{id}/master`, `/group`, `/dim` | Helligkeit, Gruppen-Dimmer, Rel. Dimmen | Bedienen |
+| `POST /playbacks/{id}/go`, `back`, `release`, `stop`, `master` | Cue-Listen bedienen | Bedienen |
+| `POST /player/{id}/config` | Fade-Zeiten der Instanz übertragen, Loop schalten | Player einstellen |
 
-Das Konto für Symcon daher mit Rolle **Admin** anlegen. Mit einem *User*-Konto funktioniert alles
-außer dem Übertragen der Fade-Zeiten und dem Loop-Schalter. (LightHUB vor 09/2026 gab die
-Cue-Namen nur an Admins heraus – dann zeigt die Cue-Auswahl „Cue 1“, „Cue 2“ … statt der Namen.)
+Das Konto für Symcon daher mit Rolle **Automation** anlegen (Bedienen + Player einstellen). Mit
+*Bediener* funktioniert alles außer dem Übertragen der Fade-Zeiten und dem Loop-Schalter.
+Ist das Konto in LightHUB auf bestimmte Player oder Cue-Listen **beschränkt** (Bereich), sieht und
+bedient Symcon nur diese – die Discovery im Controller legt dann auch nur diese an.
+
+Ältere LightHUB-Versionen (vor 09/2026) kennen nur *Admin* und *User*: dort Rolle **Admin** nehmen;
+die Cue-Auswahl zeigt mit *User* „Cue 1“, „Cue 2“ … statt der Namen.
 
 ## Variablen der Player-Instanz
 
@@ -209,6 +212,7 @@ ANPP_SetMasterValue($player, (int)GetValue($istTag ? $vTagHell : $vNachtHell));
 
 | Build | Änderung |
 |---|---|
+| 106 | Hinweise auf die LightHUB-Rolle *Automation* (Rechteverwaltung); Bereiche je Konto werden beachtet |
 | 105 | Neues Modul *LightHUB Cue-Liste* für freie Cue-Listen (Go/Zurück/Release/Stopp, Cue-Auswahl, Master, KNX); Cue-Listen-Discovery im Controller |
 | 104 | Rel. Dimmen als Start/Stopp in LightHUB (stufenlos, Zeit einstellbar), `ANPP_StartDim`/`ANPP_StopDim`; Schritte nur noch am alten Player |
 | 103 | Umbenennung in LightHUB (Anzeige); GUIDs/Präfixe unverändert |

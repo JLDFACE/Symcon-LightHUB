@@ -15,7 +15,7 @@
     {
       "type": "ValidationTextBox",
       "name": "Username",
-      "caption": "Benutzer (LightHUB-Konto, Rolle User; leer = ohne Anmeldung)"
+      "caption": "Benutzer (LightHUB-Konto, Rolle Automation; leer = ohne Anmeldung)"
     },
     {
       "type": "PasswordTextBox",

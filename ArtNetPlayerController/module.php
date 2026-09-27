@@ -17,7 +17,7 @@ class ArtNetPlayerController extends IPSModule
         $this->RegisterPropertyInteger('Port', 8000);
         $this->RegisterPropertyInteger('Poll', 3);
         // LightHUB verlangt eine Anmeldung (HTTP Basic Auth). Am besten ein eigenes
-        // LightHUB-Konto mit Rolle "User" anlegen (z.B. "symcon"). Leer = ohne Anmeldung
+        // LightHUB-Konto mit Rolle "Automation" anlegen (z.B. "symcon"). Leer = ohne Anmeldung
         // (alter Art-Net DMX Player 1.x).
         $this->RegisterPropertyString('Username', '');
         $this->RegisterPropertyString('Password', '');
