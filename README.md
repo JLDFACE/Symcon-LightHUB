@@ -65,11 +65,11 @@ Das Modul ruft diese LightHUB-Funktionen auf:
 | `POST /player/{id}/master`, `/group`, `/dim` | Helligkeit, Gruppen-Dimmer, Rel. Dimmen | User |
 | `POST /player/{id}/config` | Fade-Zeiten der Instanz übertragen, Loop schalten | **Admin** |
 | `POST /playbacks/{id}/go`, `back`, `release`, `stop`, `master` | Cue-Listen bedienen | User |
-| `GET /cuelists` | Cue-Namen für die Auswahl in der Cue-Listen-Instanz | **Admin** |
+| `GET /cuelists` | Cue-Namen für die Auswahl in der Cue-Listen-Instanz | User |
 
 Das Konto für Symcon daher mit Rolle **Admin** anlegen. Mit einem *User*-Konto funktioniert alles
-außer dem Übertragen der Fade-Zeiten und dem Loop-Schalter; die Cue-Auswahl zeigt dann „Cue 1“,
-„Cue 2“ … statt der Namen.
+außer dem Übertragen der Fade-Zeiten und dem Loop-Schalter. (LightHUB vor 09/2026 gab die
+Cue-Namen nur an Admins heraus – dann zeigt die Cue-Auswahl „Cue 1“, „Cue 2“ … statt der Namen.)
 
 ## Variablen der Player-Instanz
 
