@@ -135,6 +135,13 @@ class ArtNetPlayer extends IPSModule
         $this->SetValueSafe('Recolor', $m);
         $this->SendToParent('looks', array('player' => (int)$this->ReadPropertyInteger('PlayerID'), 'looks' => array('recolor' => $modes[$m])));
     }
+    // Ueberblendzeit fuer Farbwechsel (0-10 s): Cues/Effekte mit Platzhaltern und umgefaerbte Aufnahmen
+    public function SetColorFade(float $seconds)
+    {
+        $v = max(0.0, min(10.0, $seconds));
+        $this->SetValueSafe('ColorFade', $v);
+        $this->SendToParent('looks', array('player' => (int)$this->ReadPropertyInteger('PlayerID'), 'looks' => array('fade_s' => $v)));
+    }
     // Speed-Master: Aufnahme und Cue-Liste des Players schneller/langsamer (10-400 %, 100 = Originaltempo)
     public function SetSpeed(int $percent)
     {
@@ -241,6 +248,10 @@ class ArtNetPlayer extends IPSModule
         }
         if ($Ident == 'Recolor') {
             $this->SetRecolor((int)$Value);
+            return;
+        }
+        if ($Ident == 'ColorFade') {
+            $this->SetColorFade((float)$Value);
             return;
         }
         if (strpos($Ident, 'Grp') === 0) {           // Gruppen-Dimmer (Grp{id})
@@ -392,7 +403,10 @@ class ArtNetPlayer extends IPSModule
         $this->SetValueSafe('Master', $on ? (int)$me['master'] : 0);
         $this->SetValueSafe('Loop', !empty($me['loop']));
         if (isset($me['speed'])) $this->SetValueSafe('Speed', (int)round($me['speed']));
-        if (isset($me['colors']) && is_array($me['colors'])) $this->SyncColorVars($me['colors'], isset($me['recolor']) ? (string)$me['recolor'] : 'off');
+        if (isset($me['colors']) && is_array($me['colors'])) {
+            $this->SyncColorVars($me['colors'], isset($me['recolor']) ? (string)$me['recolor'] : 'off',
+                isset($me['color_fade_s']) ? (float)$me['color_fade_s'] : 0.5);
+        }
         $dur = isset($me['duration_ms']) ? (int)$me['duration_ms'] : 0;
         $pos = isset($me['position_ms']) ? (int)$me['position_ms'] : 0;
         $this->SetValueSafe('Position', $dur > 0 ? round(100.0 * $pos / $dur, 1) : 0.0);
@@ -485,7 +499,7 @@ class ArtNetPlayer extends IPSModule
     }
 
     // Je Player-Farbe eine Variable (Color{n}, ~HexColor) + Umfaerben; ueberzaehlige entfernen.
-    private function SyncColorVars($colors, $recolor)
+    private function SyncColorVars($colors, $recolor, $fade)
     {
         $n = count($colors);
         foreach ($colors as $i => $hex) {
@@ -501,6 +515,9 @@ class ArtNetPlayer extends IPSModule
         $this->EnableAction('Recolor');
         $map = array('off' => 0, 'rgb3' => 1, 'tint' => 2);
         $this->SetValueSafe('Recolor', isset($map[$recolor]) ? $map[$recolor] : 0);
+        $this->MaintainVariable('ColorFade', 'Farbwechsel', 2 /*Float*/, 'ANP.Seconds', 50, true);
+        $this->EnableAction('ColorFade');
+        $this->SetValueSafe('ColorFade', round($fade, 1));
     }
 
     // Je Gruppe eine Dimmer-Variable (Grp{id}) anlegen/aktualisieren; verwaiste entfernen.
@@ -541,6 +558,13 @@ class ArtNetPlayer extends IPSModule
         }
         IPS_SetVariableProfileValues('ANP.PercentF', 0, 100, 0);
         IPS_SetVariableProfileText('ANP.PercentF', '', ' %');
+        if (!IPS_VariableProfileExists('ANP.Seconds')) {
+            IPS_CreateVariableProfile('ANP.Seconds', 2);
+            IPS_SetVariableProfileIcon('ANP.Seconds', 'Clock');
+        }
+        IPS_SetVariableProfileDigits('ANP.Seconds', 1);
+        IPS_SetVariableProfileValues('ANP.Seconds', 0, 10, 0.1);
+        IPS_SetVariableProfileText('ANP.Seconds', '', ' s');
         if (!IPS_VariableProfileExists('ANP.Recolor')) {
             IPS_CreateVariableProfile('ANP.Recolor', 1);
             IPS_SetVariableProfileIcon('ANP.Recolor', 'Paintbrush');
